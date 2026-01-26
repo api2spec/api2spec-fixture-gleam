@@ -1,4 +1,4 @@
-FROM ghcr.io/gleam-lang/gleam:v1.0-erlang-alpine
+FROM ghcr.io/gleam-lang/gleam:v1.14.0-erlang
 
 WORKDIR /app
 
