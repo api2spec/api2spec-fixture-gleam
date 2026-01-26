@@ -1,12 +1,23 @@
 import gleeunit
 import gleeunit/should
+import gleam/dynamic/decode
 import gleam/http
 import gleam/json
+import wisp
 import wisp/simulate
 import api2spec_fixture_gleam
 
 pub fn main() {
   gleeunit.main()
+}
+
+// Helper function to get response body as string
+fn get_body_string(response: wisp.Response) -> String {
+  case response.body {
+    wisp.Text(text) -> text
+    wisp.Bytes(_) -> ""
+    wisp.File(_, _, _) -> ""
+  }
 }
 
 // Health endpoints
@@ -17,6 +28,16 @@ pub fn health_returns_200_test() {
 
   response.status
   |> should.equal(200)
+
+  let body = get_body_string(response)
+  let decoder = {
+    use status <- decode.field("status", decode.string)
+    use version <- decode.field("version", decode.string)
+    decode.success(#(status, version))
+  }
+  let assert Ok(#(status, version)) = json.parse(body, decoder)
+  status |> should.equal("ok")
+  version |> should.equal("0.1.0")
 }
 
 pub fn health_ready_returns_200_test() {
@@ -25,6 +46,16 @@ pub fn health_ready_returns_200_test() {
 
   response.status
   |> should.equal(200)
+
+  let body = get_body_string(response)
+  let decoder = {
+    use status <- decode.field("status", decode.string)
+    use version <- decode.field("version", decode.string)
+    decode.success(#(status, version))
+  }
+  let assert Ok(#(status, version)) = json.parse(body, decoder)
+  status |> should.equal("ready")
+  version |> should.equal("0.1.0")
 }
 
 // Users list and create
@@ -35,6 +66,19 @@ pub fn get_users_returns_200_test() {
 
   response.status
   |> should.equal(200)
+
+  let body = get_body_string(response)
+  let user_decoder = {
+    use id <- decode.field("id", decode.int)
+    use name <- decode.field("name", decode.string)
+    decode.success(#(id, name))
+  }
+  let assert Ok(users) = json.parse(body, decode.list(user_decoder))
+  users |> should.not_equal([])
+  // Check first user has expected fields
+  let assert [#(id1, name1), ..] = users
+  id1 |> should.equal(1)
+  name1 |> should.equal("Alice")
 }
 
 pub fn create_user_returns_201_test() {
@@ -45,6 +89,16 @@ pub fn create_user_returns_201_test() {
 
   response.status
   |> should.equal(201)
+
+  let response_body = get_body_string(response)
+  let decoder = {
+    use id <- decode.field("id", decode.int)
+    use name <- decode.field("name", decode.string)
+    decode.success(#(id, name))
+  }
+  let assert Ok(#(id, name)) = json.parse(response_body, decoder)
+  id |> should.equal(1)
+  name |> should.equal("New User")
 }
 
 // Single user CRUD
@@ -55,6 +109,16 @@ pub fn get_user_returns_200_test() {
 
   response.status
   |> should.equal(200)
+
+  let body = get_body_string(response)
+  let decoder = {
+    use id <- decode.field("id", decode.int)
+    use name <- decode.field("name", decode.string)
+    decode.success(#(id, name))
+  }
+  let assert Ok(#(id, name)) = json.parse(body, decoder)
+  id |> should.equal(1)
+  name |> should.equal("User")
 }
 
 pub fn update_user_returns_200_test() {
@@ -65,6 +129,16 @@ pub fn update_user_returns_200_test() {
 
   response.status
   |> should.equal(200)
+
+  let response_body = get_body_string(response)
+  let decoder = {
+    use id <- decode.field("id", decode.int)
+    use name <- decode.field("name", decode.string)
+    decode.success(#(id, name))
+  }
+  let assert Ok(#(id, name)) = json.parse(response_body, decoder)
+  id |> should.equal(1)
+  name |> should.equal("Updated")
 }
 
 pub fn delete_user_returns_204_test() {
@@ -73,6 +147,10 @@ pub fn delete_user_returns_204_test() {
 
   response.status
   |> should.equal(204)
+
+  // DELETE returns empty body
+  let body = get_body_string(response)
+  body |> should.equal("")
 }
 
 // User posts
@@ -83,6 +161,20 @@ pub fn get_user_posts_returns_200_test() {
 
   response.status
   |> should.equal(200)
+
+  let body = get_body_string(response)
+  let post_decoder = {
+    use id <- decode.field("id", decode.int)
+    use user_id <- decode.field("user_id", decode.int)
+    use title <- decode.field("title", decode.string)
+    decode.success(#(id, user_id, title))
+  }
+  let assert Ok(posts) = json.parse(body, decode.list(post_decoder))
+  posts |> should.not_equal([])
+  let assert [#(id, user_id, title), ..] = posts
+  id |> should.equal(1)
+  user_id |> should.equal(1)
+  title |> should.equal("Post")
 }
 
 // Posts list and create
@@ -93,6 +185,18 @@ pub fn get_posts_returns_200_test() {
 
   response.status
   |> should.equal(200)
+
+  let body = get_body_string(response)
+  let post_decoder = {
+    use id <- decode.field("id", decode.int)
+    use title <- decode.field("title", decode.string)
+    decode.success(#(id, title))
+  }
+  let assert Ok(posts) = json.parse(body, decode.list(post_decoder))
+  posts |> should.not_equal([])
+  let assert [#(id, title), ..] = posts
+  id |> should.equal(1)
+  title |> should.equal("First Post")
 }
 
 pub fn create_post_returns_201_test() {
@@ -103,6 +207,16 @@ pub fn create_post_returns_201_test() {
 
   response.status
   |> should.equal(201)
+
+  let response_body = get_body_string(response)
+  let decoder = {
+    use id <- decode.field("id", decode.int)
+    use title <- decode.field("title", decode.string)
+    decode.success(#(id, title))
+  }
+  let assert Ok(#(id, title)) = json.parse(response_body, decoder)
+  id |> should.equal(1)
+  title |> should.equal("New Post")
 }
 
 pub fn get_post_returns_200_test() {
@@ -111,6 +225,16 @@ pub fn get_post_returns_200_test() {
 
   response.status
   |> should.equal(200)
+
+  let body = get_body_string(response)
+  let decoder = {
+    use id <- decode.field("id", decode.int)
+    use title <- decode.field("title", decode.string)
+    decode.success(#(id, title))
+  }
+  let assert Ok(#(id, title)) = json.parse(body, decoder)
+  id |> should.equal(1)
+  title |> should.equal("Post")
 }
 
 // Not found cases
