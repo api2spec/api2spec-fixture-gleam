@@ -1,5 +1,22 @@
+# Gleam Build
 /build/
 erl_crash.dump
+*.beam
+*.ez
+
+# IDE
+.idea/
+.vscode/
+
+# macOS
+.DS_Store
+
+# Environment
+.env
+.env.*
+
+# Logs
+*.log
 
 # Claude Code
 .claude/
